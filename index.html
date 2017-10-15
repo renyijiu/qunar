@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.js"></script>
+    
+    <script src="http://api.map.baidu.com/api?v=2.0&ak=ZUONbpqGBsYGXNIYHicvbAbM"></script>
+    
+    <!-- 引入 ECharts 文件 -->
+    <script src="./dist/echarts.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/china.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/world.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/bmap.min.js"></script>
+</head>
+
+<body>
+    <!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    <div id="main" style="width: 1200px;height:800px;"></div>
+</body>
+
+<script type="text/javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+
+    function main() {
+        var res = [];
+
+        $.ajax({
+            url: 'http://github-renyijiu.qiniudn.com/list_1.txt',
+            success: function (data) {
+                //parse your data here
+                //you can split into lines using data.split('\n') 
+                //an use regex functions to effectively parse it
+                var lines = data.split('\n');
+                for (var i = 0; i < lines.length; i++) {
+                    var line = JSON.parse(lines[i]);
+
+                    line.value[0] = +line.value[0];
+                    line.value[1] = +line.value[1];
+                    // console.log(line)
+                    res.push(line);
+                }
+                initChart(res);
+            }
+        });
+    };
+
+    function initChart(data) {
+        var option = {
+            title: {
+                text: '数据分析',
+                subtext: 'qunar',
+                sublink: 'yijiu.ren',
+                left: 'center'
+            },
+            tooltip : {
+                trigger: 'item'
+            },
+            bmap: {
+                center: [104.114129, 37.550339],
+                zoom: 5,
+                roam: true,
+                mapStyle: {
+                    styleJson: [{
+                        'featureType': 'water',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'land',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#f3f3f3'
+                        }
+                    }, {
+                        'featureType': 'railway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'highway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#fdfdfd'
+                        }
+                    }, {
+                        'featureType': 'highway',
+                        'elementType': 'labels',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'geometry',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'geometry.fill',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'poi',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'green',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'subway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'manmade',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'local',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'labels',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'boundary',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'building',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'label',
+                        'elementType': 'labels.text.fill',
+                        'stylers': {
+                            'color': '#999999'
+                        }
+                    }]
+                }
+            },
+            visualMap: {
+                type: 'continuous', // 连续型
+                min: 0,       		// 值域最小值，必须参数
+                max: 20000,			// 值域最大值，必须参数
+                calculable: true,	// 是否启用值域漫游
+                inRange: {
+                        color: ['#50a3ba','#eac736','#d94e5d']
+                                    // 指定数值从低到高时的颜色变化
+                },
+                textStyle: {
+                    color: '#fff'	// 值域控件的文本颜色
+                }
+            },
+            series : [
+                {
+                    name: '去哪儿数据统计',
+                    type: 'scatter',
+                    coordinateSystem: 'bmap',
+                    data: data,
+                    symbolSize: function (val) {
+                        return val[2] / 500;
+                    },
+                    label: {
+                        normal: {
+                            formatter: '{b}',
+                            position: 'right',
+                            show: false
+                        },
+                        emphasis: {
+                            show: true
+                        }
+                    },
+                    itemStyle: {
+                        normal: {
+                            color: 'purple'
+                        }
+                    }
+                }
+            ]
+        };
+
+        // 使用刚指定的配置项和数据显示图表。
+        myChart.setOption(option);
+    };
+
+    main();
+</script>
+</html>
