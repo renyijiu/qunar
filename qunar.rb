@@ -9,46 +9,63 @@ require './config.rb'
 
 class Qunar
   def initialize
-    # @redis = Redis.new(host: "127.0.0.1", port: 6380, db: 15)
+    @redis = Redis.new(host: "127.0.0.1", port: 6380, db: 15)
   end
 
   def spider
+    visited_cities = JSON.parse(@redis.get('visited_cities') || '[]') # [], 获取已经爬取过的城市列表
+    puts "当前已经访问过的城市： #{visited_cities}"
+    
     # 获取城市列表
     config = Config.new
-    cities = config.get_cities
+    cities = config.get_cities - visited_cities
 
     base_url = "http://piao.qunar.com/ticket/list.json?from=mpl_search_suggest"
 
     # 4进程运行程序
     Parallel.map(cities, in_processes: 4) do |city|
-      page = 1
+      current_worker = Parallel.worker_number
+      his_status = JSON.parse(@redis.get(current_worker) || '{}') # {city => page},保存的历史状态
+
+      page = his_status.fetch(city, 1)
       flag = 1
-      
+
       while true
         url = URI.encode("#{base_url}&page=#{page}&keyword=#{city}")
         puts "当前URL： #{url}"
 
         begin
           res = get_list(url)
-          break unless res
+          puts "记录状态： #{res}"
+
+          unless res || page <= 50 # 只取前50页数据
+            record_visited(city)
+            his_status.delete(city)
+
+            break
+          end
+          puts "当前页数：#{page}"          
           puts "数据写入成功..."
 
           sleep rand(50)
+        rescue => e
+          puts "错误信息： #{e}"
 
-          puts "当前页数：#{page}"
-          page += 1          
-          flag = 1 
-        rescue
           if flag <= 3
             puts "第#{flag}次重试..."
             sleep(10 * flag)            
             
             flag += 1
             retry
-          else
-            flag = 1
           end
-        end        
+        end
+        
+        page += 1        
+        flag = 1
+
+        # 保存当前状态
+        his_status[city] = page
+        @redis.set(current_worker, his_status.to_json)
       end
     end
 
@@ -82,8 +99,8 @@ class Qunar
 
       write_tag = write_file(res)
       return false unless write_tag
-    rescue
-      puts "当前数据：#{data || ""}, 数据解析出错了..."
+    rescue => e
+      puts "当前数据：#{data || ""}, 错误信息: #{e}"
 
       raise "出现错误"
     end
@@ -107,6 +124,13 @@ class Qunar
     end
 
     true
+  end
+
+  def record_visited(city)
+    cities = JSON.parse(@redis.get('visited_cities') || '[]')
+
+    cities += [city]
+    @redis.set('visited_cities', cities.to_json)
   end
 
 end
